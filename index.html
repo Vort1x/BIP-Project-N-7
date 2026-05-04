@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BIP EduAI Diagnostic Science Quiz</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div>
+      <p class="eyebrow">BIP EduAI UNITA 2025-2026</p>
+      <h1>Forces and Motion Diagnostic Quiz</h1>
+    </div>
+    <button id="dashboardButton" class="secondary-button" type="button">Teacher dashboard</button>
+  </header>
+
+  <main class="app-shell">
+    <section id="startScreen" class="screen active">
+      <div class="intro-grid">
+        <div>
+          <h2>Find the thinking behind each answer</h2>
+          <p>
+            This short quiz helps students check common ideas about forces and motion.
+            Wrong answers are not just marked incorrect: each one points to a possible
+            misconception and gives a counter-example.
+          </p>
+          <p>
+            Answer one question at a time. Feedback appears immediately after each answer.
+            At the end, you will see your score and a summary of the misconceptions detected.
+          </p>
+          <button id="startButton" class="primary-button" type="button">Start quiz</button>
+        </div>
+        <aside class="info-panel">
+          <h3>For teachers</h3>
+          <p>
+            The dashboard counts misconceptions detected during this browser session.
+            It is anonymous and resets when the page is refreshed.
+          </p>
+        </aside>
+      </div>
+    </section>
+
+    <section id="quizScreen" class="screen">
+      <div class="quiz-topline">
+        <p id="progressText">Question 1 of 8</p>
+        <p id="scoreText">Score: 0</p>
+      </div>
+
+      <article class="question-card">
+        <h2 id="questionText"></h2>
+        <div id="answerOptions" class="answer-list"></div>
+      </article>
+
+      <article id="feedbackPanel" class="feedback-panel hidden">
+        <p id="feedbackLabel" class="feedback-label"></p>
+        <h3 id="feedbackTitle"></h3>
+        <p id="feedbackText"></p>
+        <div id="counterExampleBox" class="counter-example">
+          <strong>Counter-example:</strong>
+          <span id="counterExampleText"></span>
+        </div>
+        <button id="nextButton" class="primary-button" type="button">Next question</button>
+      </article>
+    </section>
+
+    <section id="resultsScreen" class="screen">
+      <h2>Quiz results</h2>
+      <p id="finalScore" class="final-score"></p>
+      <div id="studentSummary" class="summary-list"></div>
+      <div class="button-row">
+        <button id="restartButton" class="primary-button" type="button">Restart quiz</button>
+        <button id="resultsDashboardButton" class="secondary-button" type="button">View teacher dashboard</button>
+      </div>
+    </section>
+
+    <section id="dashboardScreen" class="screen">
+      <div class="dashboard-header">
+        <div>
+          <h2>Teacher dashboard</h2>
+          <p>Misconceptions detected in this browser session.</p>
+        </div>
+        <button id="backToQuizButton" class="secondary-button" type="button">Back</button>
+      </div>
+      <div id="dashboardContent" class="dashboard-list"></div>
+    </section>
+  </main>
+
+  <script src="data/questions.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
