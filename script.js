@@ -8,6 +8,8 @@ const quizState = {
   teacherMisconceptionCounts: {}
 };
 
+const AI_FEEDBACK_TIMEOUT_MS = 5000;
+
 const screens = {
   start: document.getElementById("startScreen"),
   quiz: document.getElementById("quizScreen"),
@@ -21,6 +23,7 @@ const resultsDashboardButton = document.getElementById("resultsDashboardButton")
 const backToQuizButton = document.getElementById("backToQuizButton");
 const restartButton = document.getElementById("restartButton");
 const nextButton = document.getElementById("nextButton");
+const aiFeedbackToggle = document.getElementById("aiFeedbackToggle");
 
 const progressText = document.getElementById("progressText");
 const scoreText = document.getElementById("scoreText");
@@ -36,6 +39,64 @@ const finalScore = document.getElementById("finalScore");
 const studentSummary = document.getElementById("studentSummary");
 const dashboardContent = document.getElementById("dashboardContent");
 
+function getQuestionBankError() {
+  if (typeof questions === "undefined") {
+    return "The question bank could not be found. Check that data/questions.js is loaded before script.js.";
+  }
+
+  if (!Array.isArray(questions) || questions.length === 0) {
+    return "The question bank is empty. Add at least one question to data/questions.js.";
+  }
+
+  for (let questionIndex = 0; questionIndex < questions.length; questionIndex++) {
+    const question = questions[questionIndex];
+
+    if (!question.text) {
+      return "Question " + (questionIndex + 1) + " is missing its question text.";
+    }
+
+    if (!Array.isArray(question.options) || question.options.length === 0) {
+      return "Question " + (questionIndex + 1) + " needs at least one answer option.";
+    }
+
+    let correctAnswerCount = 0;
+
+    for (let optionIndex = 0; optionIndex < question.options.length; optionIndex++) {
+      const option = question.options[optionIndex];
+      const answerNumber = "Question " + (questionIndex + 1) + ", answer " + (optionIndex + 1);
+
+      if (!option.text) {
+        return answerNumber + " is missing answer text.";
+      }
+
+      if (!option.feedback) {
+        return answerNumber + " is missing feedback.";
+      }
+
+      if (option.correct) {
+        correctAnswerCount = correctAnswerCount + 1;
+      } else if (!option.misconception || !option.counterExample) {
+        return answerNumber + " needs a misconception and counter-example.";
+      }
+    }
+
+    if (correctAnswerCount !== 1) {
+      return "Question " + (questionIndex + 1) + " should have exactly one correct answer.";
+    }
+  }
+
+  return "";
+}
+
+function showQuestionBankError(message) {
+  const errorMessage = document.createElement("p");
+  errorMessage.textContent = message;
+  errorMessage.style.color = "#b42318";
+  errorMessage.style.fontWeight = "700";
+  startButton.insertAdjacentElement("beforebegin", errorMessage);
+  startButton.disabled = true;
+}
+
 function showScreen(screenName) {
   // Hide all screens, then show the one requested.
   Object.values(screens).forEach(function (screen) {
@@ -46,6 +107,12 @@ function showScreen(screenName) {
 }
 
 function startQuiz() {
+  const questionBankError = getQuestionBankError();
+
+  if (questionBankError) {
+    return;
+  }
+
   quizState.currentQuestionIndex = 0;
   quizState.score = 0;
   quizState.selectedAnswers = [];
@@ -117,6 +184,14 @@ function markCorrectOption(question, buttons) {
   });
 }
 
+function getCorrectAnswerText(question) {
+  const correctOption = question.options.find(function (option) {
+    return option.correct;
+  });
+
+  return correctOption ? correctOption.text : "";
+}
+
 function recordMisconception(option) {
   const misconceptionName = option.misconception;
 
@@ -149,6 +224,8 @@ function showCorrectFeedback(option) {
 }
 
 function showWrongFeedback(option) {
+  const question = questions[quizState.currentQuestionIndex];
+
   feedbackPanel.classList.remove("hidden");
   feedbackPanel.classList.add("wrong-feedback");
   feedbackLabel.textContent = "Misconception detected";
@@ -157,6 +234,52 @@ function showWrongFeedback(option) {
   counterExampleText.textContent = option.counterExample;
   counterExampleBox.classList.remove("hidden");
   updateNextButtonText();
+
+  if (aiFeedbackToggle.checked) {
+    addAiFeedback(question, option);
+  }
+}
+
+async function addAiFeedback(question, option) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(function () {
+    controller.abort();
+  }, AI_FEEDBACK_TIMEOUT_MS);
+
+  try {
+    const response = await fetch("/api/gemini", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      signal: controller.signal,
+      body: JSON.stringify({
+        question: question.text,
+        selectedAnswer: option.text,
+        correctAnswer: getCorrectAnswerText(question),
+        misconception: option.misconception,
+        existingFeedback: option.feedback,
+        studentAgeRange: "11-16"
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error("AI feedback request failed.");
+    }
+
+    const data = await response.json();
+
+    if (!data.explanation || !data.followUpQuestion) {
+      throw new Error("AI feedback response was incomplete.");
+    }
+
+    feedbackText.textContent =
+      data.explanation + " Follow-up question: " + data.followUpQuestion;
+  } catch (error) {
+    console.warn("Using prewritten feedback because AI feedback was unavailable.", error);
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 function updateNextButtonText() {
@@ -258,6 +381,12 @@ function goBackFromDashboard() {
   } else {
     showScreen("start");
   }
+}
+
+const questionBankError = getQuestionBankError();
+
+if (questionBankError) {
+  showQuestionBankError(questionBankError);
 }
 
 startButton.addEventListener("click", startQuiz);
